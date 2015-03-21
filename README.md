@@ -40,8 +40,8 @@ This is a very short description of my own setup at home.
 Configuration located in /etc/unbound. I added a subfolder /etc/unbound/conf.d/
 and reduced /etc/unbound/unbound.conf to a bare minimum:
 
-        server:
-            include: "/etc/unbound/conf.d/*.conf"
+    server:
+        include: "/etc/unbound/conf.d/*.conf"
 
 The other configuration files are located in that conf.d subfolder, including
 the file produced by this script.
@@ -50,6 +50,12 @@ the file produced by this script.
 
 Create a cronjob for the update_unbound script and run it once every week or
 month. I don't think the lists will change very often.
+
+## Shell One-Liner
+
+If you prefer a bash shell one-liner
+
+    { echo "server:" ; { curl -s 'http://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&mimetype=plaintext'; curl -s 'http://someonewhocares.org/hosts/hosts'; } | sed s/#.*$// | awk '/^127\.0\.0\.1/ { print $2 }' | sort | uniq | awk '{ print "local-zone: \"" $1 "\" redirect\nlocal-data: \"" $1 " A 127.0.0.1\"\nlocal-data: \"" $1 " AAAA ::1\""}'; }
 
 
 ## References
