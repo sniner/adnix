@@ -66,6 +66,7 @@ For cron:
 
 For systemd:
 
+    ln -s /usr/local/adnix/adnix.service /etc/systemd/system
     systemctl enable /usr/local/adnix/adnix.timer
     systemctl start adnix.timer
 
