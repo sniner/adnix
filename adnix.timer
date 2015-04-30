@@ -1,0 +1,11 @@
+[Unit]
+Description=Run adnix update_unbound weekly
+
+[Timer]
+OnBootSec=5min
+OnCalendar=Sun, 00:00
+Persistent=true 
+Unit=/usr/local/adnix/adnix.service
+
+[Install]
+WantedBy=multi-user.target

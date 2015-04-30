@@ -51,6 +51,24 @@ the file produced by this script.
 Create a cronjob for the update_unbound script and run it once every week or
 month. I don't think the lists will change very often.
 
+First unbound must be configured to accept unbound-control:
+
+    sudo -u unbound unbound-control-setup
+
+Edit /etc/unbound/unbound.conf and add these lines:
+
+    remote-control:
+      control-enable: yes
+
+For cron:
+
+    cp adnix.cron /etc/cron.d/adnix
+
+For systemd:
+
+    systemctl enable /usr/local/adnix/adnix.timer
+    systemctl start adnix.timer
+
 ## Shell One-Liner
 
 If you prefer a bash shell one-liner
