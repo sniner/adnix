@@ -1,0 +1,5 @@
+[Unit]
+Description=Adnix updater
+
+[Service]
+ExecStart=/usr/local/adnix/update_unbound
