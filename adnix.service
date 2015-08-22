@@ -2,4 +2,4 @@
 Description=Adnix updater
 
 [Service]
-ExecStart=/usr/local/adnix/update_unbound
+ExecStart=/usr/local/adnix/update_unbound --address 0.0.0.0 --v6address ::
