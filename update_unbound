@@ -1,8 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
 DEST=/etc/unbound/conf.d/90-adblocking.conf
 
 DIR=$(dirname "$0")
-$DIR/adnix --file=$DEST.tmp
+$DIR/adnix --file=$DEST.tmp "$@"
 mv $DEST.tmp $DEST
-systemctl reload unbound
+systemctl stop unbound
+sleep 1
+systemctl start unbound
