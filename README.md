@@ -1,10 +1,7 @@
 # adnix
 
 A little script to convert ad blocking hosts files provided by Dan Pollock,
-Peter Lowe, et al. into an Unbound configuration file.
-
-This script has been inspired by Gavin Brown's
-[unbound-block-hosts](https://github.com/jodrell/unbound-block-hosts).
+Peter Lowe, et al. into an Unbound or Dnsmasq configuration file.
 
 
 ## Introduction
@@ -46,6 +43,18 @@ and reduced /etc/unbound/unbound.conf to a bare minimum:
 The other configuration files are located in that conf.d subfolder, including
 the file produced by this script.
 
+### Dnsmasq
+
+Option '--dnsmasq' produces ouput for Dnsmasq. 
+
+    sudo adnix --dnsmasq --file /etc/dnsmasq.d/adnix
+
+If you have NetworkManager start Dnsmasq:
+
+    sudo adnix --dnsmasq --file /etc/NetworkManager/dnsmasq.d/adnix
+
+Otherwise you have to 
+
 ### Periodic update
 
 Create a cronjob for the update_unbound script and run it once every week or
@@ -79,6 +88,7 @@ If you prefer a bash shell one-liner (only 2 sources, but you get the picture):
 
 ## References
 
-* [unbound-block-hosts](https://github.com/jodrell/unbound-block-hosts) by Gavin Brown
-* [http://someonewhocares.org/hosts/](http://someonewhocares.org/hosts/) by Dan Pollock
-* [http://pgl.yoyo.org/adservers/](http://pgl.yoyo.org/adservers/) by Peter Lowe
+* Script [unbound-block-hosts](https://github.com/jodrell/unbound-block-hosts) by Gavin Brown
+* [Dan Pollock's list](http://someonewhocares.org/hosts/)
+* [Peter Lowe's list](http://pgl.yoyo.org/adservers/)
+* [Malware Domain List](http://www.malwaredomainlist.com/hostslist/hosts.txt)

@@ -35,14 +35,6 @@
 require 'optparse'
 require 'net/http'
 
-@opt = {
-    # Addresses to resolve hosts to:
-    address:    '127.0.0.1',
-    v6address:  '::1',
-    # Destination file name:
-    file:       nil,
-}
-
 # Generic hosts list
 class HostsList
     attr_reader :url
@@ -99,24 +91,72 @@ class Yoyo < HostsList
     end
 end
 
+class Formatter
+    def initialize(ipv4, ipv6)
+        @ipv4, @ipv6 = ipv4, ipv6
+    end
+end
+
+class UnboundFormatter < Formatter
+    def format(hosts)
+        ['server:'] +
+        hosts.flat_map do |host|
+            [
+                "  local-zone: \"#{host}\" redirect",
+                "  local-data: \"#{host} A #{@ipv4}\"",
+                @ipv6 ? "  local-data: \"#{host} AAAA #{@ipv6}\"" : nil,
+            ]
+        end.compact
+    end
+end
+
+class DnsmasqFormatter < Formatter
+    def format(hosts)
+        hosts.flat_map do |host|
+            [
+                "address=\"/#{host}/#{@ipv4}\"",
+                @ipv6 ? "address=\"/#{host}/#{@ipv6}\"" : nil,
+            ]
+        end.compact
+    end
+end
+
+
+@opt = {
+    # Addresses to resolve hosts to:
+    address:    '127.0.0.1',
+    v6address:  '::1',
+    # Destination file name:
+    output:     nil,
+    # Type of output
+    formatter:  UnboundFormatter
+}
+
+
 begin
     OptionParser.new do |opts|
         opts.banner = "Usage: #{File.basename($0)} [options]"
 
-        opts.on("--file FILENAME", "Output file name (default: #{@opt[:file]||'stdout'})") do |f|
-            @opt[:file] = f
+        opts.on('-o', '--file FILENAME', "Output file name (default: #{@opt[:file]||'stdout'})") do |f|
+            @opt[:output] = f
         end
 
-        opts.on("--address ADDR", "IPv4 address to resolve the hosts to (default: #{@opt[:address]})") do |a|
+        opts.on('--address ADDR', "IPv4 address to resolve the hosts to (default: #{@opt[:address]})") do |a|
             @opt[:address] = a
         end
 
-        opts.on("--v6address ADDR", "IPv6 address to resolve the hosts to (default: #{@opt[:v6address]})") do |a|
+        opts.on('--v6address [ADDR]', "IPv6 address to resolve the hosts to (default: #{@opt[:v6address]})") do |a|
             @opt[:v6address] = a
         end
-    end.parse!
 
-    f = if @opt[:file] then File.open(@opt[:file], 'w') else $stdout end
+        opts.on('--dnsmasq', "Format output for Dnsmasq") do
+            @opt[:formatter] = DnsmasqFormatter
+        end
+
+        opts.on('--unbound', "Format output for Unbound (default)") do
+            @opt[:formatter] = UnboundFormatter
+        end
+    end.parse!
 
     sources = {
         'Malware Domain List' => HostsList.new('http://www.malwaredomainlist.com/hostslist/hosts.txt'),
@@ -136,17 +176,16 @@ begin
     end.sort.uniq
     $stderr.puts("INFO: Combined hosts list: #{hosts.length} entries")
 
-    f.puts("server:")
-    hosts.each do |host|
-        f.puts("  local-zone: \"#{host}\" redirect")
-        f.puts("  local-data: \"#{host} A #{@opt[:address]}\"")
-        f.puts("  local-data: \"#{host} AAAA #{@opt[:v6address]}\"")
+    output = @opt[:formatter].new(@opt[:address], @opt[:v6address]).format(hosts)
+
+    if @opt[:output]
+        File.open(@opt[:output], 'w') {|f| f.write(output.join("\n"))}
+    else
+        output.each {|line| puts line}
     end
 
 rescue => ex
     $stderr.puts("ERROR: #{ex}")
-ensure
-    f.close unless f==$stdout
 end
 
 # vim: sw=4 ts=4 et:
