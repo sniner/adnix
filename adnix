@@ -2,16 +2,16 @@
 #
 # Copyright (c) 2015, Stefan Schoenberger <stefan.schoenberger@gmail.com>
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
+#
 # 1. Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer. 
+#    list of conditions and the following disclaimer.
 # 2. Redistributions in binary form must reproduce the above copyright notice,
 #    this list of conditions and the following disclaimer in the documentation
 #    and/or other materials provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -22,9 +22,9 @@
 # ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # The views and conclusions contained in the software and documentation are those
-# of the authors and should not be interpreted as representing official policies, 
+# of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
 #
@@ -36,131 +36,100 @@ require 'optparse'
 require 'net/http'
 
 @opt = {
-    # Addresses to resolve the hosts to:
-    address:                    '127.0.0.1',
-    v6address:                  '::1',
-
+    # Addresses to resolve hosts to:
+    address:    '127.0.0.1',
+    v6address:  '::1',
     # Destination file name:
-    file:                       nil,
-
-    # Section filter for Dan Pollock's hosts list:
-    someonewhocares_filter: {
-        '2o7-sites'             => true,
-        'ad-sitesi'             => true,
-        'belo-interactive-sites'=> true,
-        'cydoor-sites'          => true,
-        'doubleclick-sites'     => true,
-        'ecard-scam-sites'      => true,
-        'extreme-dm-sites'      => true,
-        'fastclick-sites'       => true,
-        'hijack-sites'          => true,
-        'hitbox-sites'          => true,
-        'intellitxt-sites'      => true,
-        'ivw-sites'             => true,
-        'malware-sites'         => true,
-        'maybe-ads'             => true,
-        'maybe-spy'             => false,
-        'popup-traps'           => true,
-        'realmedia-sites'       => true,
-        'red-sheriff-sites'     => true,
-        'shock-sites'           => false,
-        'spyware-sites'         => true,
-        'wiki-spam-sites'       => true,
-        'yahoo-ad-sites'        => true,
-    }
+    file:       nil,
 }
 
+# Generic hosts list
+class HostsList
+    attr_reader :url
 
-OptionParser.new do |opts|
-    opts.banner = "Usage: #{File.basename($0)} [options]"
-
-    opts.on("--file FILENAME", "Output file name (default: #{@opt[:file]||'stdout'})") do |f|
-        @opt[:file] = f
+    def initialize(url)
+        @url = url
     end
 
-    opts.on("--address ADDR", "IPv4 address to resolve the hosts to (default: #{@opt[:address]})") do |a|
-        @opt[:address] = a
+    def load
+        res = Net::HTTP.get_response(URI(@url))
+        raise "ERROR: #{@url}: #{res.message}" unless res.is_a?(Net::HTTPSuccess)
+        parse(res.body.split(/\r?\n/))
     end
 
-    opts.on("--v6address ADDR", "IPv6 address to resolve the hosts to (default: #{@opt[:v6address]})") do |a|
-        @opt[:v6address] = a
+    def parse(lines)
+        lines.each.map do |line|
+            case line
+            when /^\s*(\d+\.\d+\.\d+\.\d+)\s+([\w\-\.]+)/
+                {addr:$1, host:$2}
+            end
+        end.compact
     end
-
-    opts.on_tail("-h", "--help", "Show help") do
-        puts opts
-        exit
-    end
-end.parse!
-
-
-def valid_host(host)
-    !host.nil? && host.length>0 && /[^[[:graph:]]]/.match(host).nil?
 end
 
-# Parse Dan Pollock's ad blocking hosts list
-def get_someonewhocares(filter)
-    name = 'someonewhocares.org'
-    uri = URI('http://someonewhocares.org/hosts/hosts')
-    res = Net::HTTP.get_response(uri)
-
-    unless res.is_a?(Net::HTTPSuccess)
-        $stderr.puts "ERROR: #{name}: #{res.message}"
-        return {name:name, hosts:[]}
+# Dan Pollock's ad blocking hosts list
+class SomeonewhocaresList < HostsList
+    def initialize
+        super('http://someonewhocares.org/hosts/hosts')
     end
 
-    section = nil
-    sections = {}
-    list = []
+    def parse(lines)
+        section = nil
+        hosts = []
 
-    res.body.each_line do |line|
-        case line.chomp
-        when /^\s*\#<\/(.+?)>/
-            sections[$1.downcase] = list
-            section = nil
-            list = []
-        when /^\s*\#<(.+?)>/
-            section = $1.downcase
-        when /^\s*([^\#]+?)\s*(\#.*)?$/
-            f = $1.split(/\s+/, 2)
-            list.push(f[1].downcase) if section && f.length==2 && valid_host(f[1])
+        lines.each do |line|
+            case line.chomp
+            when /^\s*\#<\/(.+?)>/
+                section = nil
+            when /^\s*\#<(.+?)>/
+                section = $1.downcase
+            when /^\s*(\d+\.\d+\.\d+\.\d+)\s+([\w\-\.]+)/
+                hosts << {addr:$1, host:$2, section:section} if section
+            end
         end
-    end
 
-    {name:name, hosts:sections.select {|s| filter[s]}.values.flatten}
+        hosts
+    end
 end
 
-# Parse Peter Lowe's ad blocking hosts list
-def get_yoyo(options)
-    name = 'pgl.yoyo.org'
-    uri = URI('http://pgl.yoyo.org/adservers/serverlist.php')
-    uri.query = URI.encode_www_form({hostformat:'hosts', showintro:'0', mimetype:'plaintext'})
-    res = Net::HTTP.get_response(uri)
-
-    unless res.is_a?(Net::HTTPSuccess)
-        $stderr.puts "ERROR: #{name}: #{res.message}"
-        return {name:name, hosts:[]}
+# Peter Lowe's ad blocking hosts list
+class Yoyo < HostsList
+    def initialize
+        super('http://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext')
     end
-
-    {name:name, hosts:res.body.each_line.map do |line|
-        case line.chomp
-        when /^\s*([^\#]+?)\s*(\#.*)?$/
-            f = $1.split(/\s+/, 2)
-            if f.length==2 && valid_host(f[1]) then f[1].downcase else nil end
-        end
-    end.compact}
 end
-
-hosts = [
-            get_someonewhocares(@opt[:someonewhocares_filter]),
-            get_yoyo(@opt),
-        ].flat_map do |list|
-            $stderr.puts("INFO: #{list[:name]}: #{list[:hosts].length} entries")
-            list[:hosts]
-        end.sort.uniq
-$stderr.puts("INFO: Combined hosts list: #{hosts.length} entries")
 
 begin
+    OptionParser.new do |opts|
+        opts.banner = "Usage: #{File.basename($0)} [options]"
+
+        opts.on("--file FILENAME", "Output file name (default: #{@opt[:file]||'stdout'})") do |f|
+            @opt[:file] = f
+        end
+
+        opts.on("--address ADDR", "IPv4 address to resolve the hosts to (default: #{@opt[:address]})") do |a|
+            @opt[:address] = a
+        end
+
+        opts.on("--v6address ADDR", "IPv6 address to resolve the hosts to (default: #{@opt[:v6address]})") do |a|
+            @opt[:v6address] = a
+        end
+    end.parse!
+
     f = if @opt[:file] then File.open(@opt[:file], 'w') else $stdout end
+
+    sources = {
+        'Malware Domain List' => HostsList.new('http://www.malwaredomainlist.com/hostslist/hosts.txt'),
+        'Dan Pollock' => SomeonewhocaresList.new,
+        'Yoyo' => Yoyo.new,
+    }
+
+    hosts = sources.flat_map do |name, source|
+        list = source.load.map {|item| item[:host]}
+        $stderr.puts("INFO: #{name}: #{list.length} entries")
+        list
+    end.sort.uniq
+    $stderr.puts("INFO: Combined hosts list: #{hosts.length} entries")
 
     f.puts("server:")
     hosts.each do |host|
@@ -168,12 +137,11 @@ begin
         f.puts("  local-data: \"#{host} A #{@opt[:address]}\"")
         f.puts("  local-data: \"#{host} AAAA #{@opt[:v6address]}\"")
     end
+
 rescue => ex
-    $stderr.puts("ERROR: #{ex}")
+    $stderr.puts("ERROR: #{ex} #{ex.backtrace}")
 ensure
     f.close unless f==$stdout
 end
-
-exit(0)
 
 # vim: sw=4 ts=4 et:
