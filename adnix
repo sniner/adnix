@@ -53,12 +53,12 @@ class HostsList
 
     def load
         res = Net::HTTP.get_response(URI(@url))
-        raise "ERROR: #{@url}: #{res.message}" unless res.is_a?(Net::HTTPSuccess)
+        raise "#{@url}: #{res.message}" unless res.is_a?(Net::HTTPSuccess)
         parse(res.body.split(/\r?\n/))
     end
 
     def parse(lines)
-        lines.each.map do |line|
+        lines.map do |line|
             case line
             when /^\s*(\d+\.\d+\.\d+\.\d+)\s+([\w\-\.]+)/
                 {addr:$1, host:$2}
@@ -125,9 +125,14 @@ begin
     }
 
     hosts = sources.flat_map do |name, source|
-        list = source.load.map {|item| item[:host]}
-        $stderr.puts("INFO: #{name}: #{list.length} entries")
-        list
+        begin
+            list = source.load.map {|item| item[:host]}
+            $stderr.puts("INFO: #{name}: #{list.length} entries")
+            list
+        rescue => ex
+            $stderr.puts("ERROR: #{ex}")
+            []
+        end
     end.sort.uniq
     $stderr.puts("INFO: Combined hosts list: #{hosts.length} entries")
 
@@ -139,7 +144,7 @@ begin
     end
 
 rescue => ex
-    $stderr.puts("ERROR: #{ex} #{ex.backtrace}")
+    $stderr.puts("ERROR: #{ex}")
 ensure
     f.close unless f==$stdout
 end
