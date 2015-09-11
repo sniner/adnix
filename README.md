@@ -53,7 +53,6 @@ If you have NetworkManager start Dnsmasq:
 
     sudo adnix --dnsmasq --file /etc/NetworkManager/dnsmasq.d/adnix
 
-Otherwise you have to 
 
 ### Periodic update
 
