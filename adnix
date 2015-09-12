@@ -27,11 +27,6 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
-#
-# See also unbound-block-hosts by Gavin Brown, as this script has been inspired
-# by his work (https://github.com/jodrell/unbound-block-hosts).
-#
-
 require 'optparse'
 require 'net/http'
 
@@ -166,7 +161,7 @@ begin
 
     hosts = sources.flat_map do |name, source|
         begin
-            list = source.load.map {|item| item[:host]}
+            list = source.load.map {|item| item[:host].downcase}
             $stderr.puts("INFO: #{name}: #{list.length} entries")
             list
         rescue => ex
@@ -179,13 +174,16 @@ begin
     output = @opt[:formatter].new(@opt[:address], @opt[:v6address]).format(hosts)
 
     if @opt[:output]
-        File.open(@opt[:output], 'w') {|f| f.write(output.join("\n"))}
+        tmp = "#{@opt[:output]}.new"
+        File.open(tmp, 'w') {|f| f.write(output.join("\n"))}
+        File.rename(tmp, @opt[:output])
     else
         output.each {|line| puts line}
     end
 
 rescue => ex
     $stderr.puts("ERROR: #{ex}")
+    exit(1)
 end
 
 # vim: sw=4 ts=4 et:

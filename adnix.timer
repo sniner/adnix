@@ -1,10 +1,10 @@
 [Unit]
-Description=Run adnix updater weekly
+Description=Run adnix updater each day
 
 [Timer]
 OnBootSec=5min
-OnCalendar=Sun, 00:00
-Persistent=true 
+OnCalendar=04:00
+Persistent=true
 
 [Install]
 WantedBy=multi-user.target

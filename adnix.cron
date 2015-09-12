@@ -1,4 +1,4 @@
 MAILTO=root
 PATH=/bin:/usr/bin:/usr/local/adnix
 
-0 0 * * 0  root  /usr/local/adnix/update_unbound 
+0 4 * * *  root  /usr/local/adnix/update_unbound

@@ -41,7 +41,9 @@ and reduced /etc/unbound/unbound.conf to a bare minimum:
         include: "/etc/unbound/conf.d/*.conf"
 
 The other configuration files are located in that conf.d subfolder, including
-the file produced by this script.
+the file produced by this script. Manual update:
+
+    sudo adnix --unbound --file /etc/unbound/conf.d/90-adnix.conf
 
 ### Dnsmasq
 
@@ -56,8 +58,7 @@ If you have NetworkManager start Dnsmasq:
 
 ### Periodic update
 
-Create a cronjob for the update_unbound script and run it once every week or
-month. I don't think the lists will change very often.
+Create a cronjob for the update_unbound script and run it periodically, for example every night.
 
 First unbound must be configured to accept unbound-control:
 
