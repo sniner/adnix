@@ -60,15 +60,6 @@ If you have NetworkManager start Dnsmasq:
 
 Create a cronjob for the update_unbound script and run it periodically, for example every night.
 
-First unbound must be configured to accept unbound-control:
-
-    sudo -u unbound unbound-control-setup
-
-Edit /etc/unbound/unbound.conf and add these lines:
-
-    remote-control:
-      control-enable: yes
-
 For cron:
 
     cp adnix.cron /etc/cron.d/adnix
