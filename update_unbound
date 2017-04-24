@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEST=/etc/unbound/conf.d/90-adnix.conf
+DEST=/etc/unbound/unbound.conf.d/adnix.conf
 
 DIR=$(dirname "$0")
 [[ -e "$DEST" ]] && OLD=$(md5sum "$DEST" | cut -f 1 -d ' ')
@@ -8,9 +8,7 @@ if $DIR/adnix --address 0.0.0.0 --v6address :: --file "$DEST" "$@"; then
 	[[ -e "$DEST" ]] && NEW=$(md5sum "$DEST" | cut -f 1 -d ' ')
 	if [[ "$OLD" != "$NEW" ]]; then
 		echo "INFO: Hosts list has been updated"
-		systemctl stop unbound
-		sleep 1
-		systemctl start unbound
+		systemctl reload unbound
 	else
 		echo "INFO: Hosts list is already up to date"
 	fi
